@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>O&T 控制台</title>
+  <style>
+    body { font-family: "Segoe UI", sans-serif; margin: 20px; background: #f9f9f9; }
+    h2 { color: #333; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; background: #fff; }
+    th, td { padding: 8px; border: 1px solid #ccc; text-align: center; }
+    th { background-color: #f2f2f2; }
+    input { width: 100%; padding: 5px; box-sizing: border-box; }
+    button {
+      padding: 5px 10px;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    button:hover { background-color: #388e3c; }
+    @media (max-width: 768px) {
+      table, thead, tbody, th, td, tr { display: block; }
+      th { text-align: left; background: #eee; }
+      td { border: none; border-bottom: 1px solid #ccc; position: relative; padding-left: 50%; }
+      td::before {
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        width: 45%;
+        white-space: nowrap;
+        font-weight: bold;
+        color: #666;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h2>📋 O&T 控制台</h2>
+  <div style="overflow-x:auto;">
+    <table id="dataTable">
+      <thead></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script>
+    const endpoint = "https://script.google.com/macros/s/AKfycbztI91dGhYOwz6m_k7RBZsdT3mAfNBOikGM1tRsGy67rnaQaDwAeCCe1aW5OT9ssA_SSw/exec";
+    const table = document.getElementById("dataTable");
+    const headers = ["Name", "Post", "Ward", "Bed Number(s)", "Urgent", "Task(s)", "Remarks", "Status"];
+
+    fetchData();
+    setInterval(fetchData, 15000);
+
+    function fetchData() {
+      fetch(endpoint)
+        .then(res => res.json())
+        .then(data => {
+          renderTable(data.rows);
+        });
+    }
+
+    function renderTable(rows) {
+      table.querySelector("thead").innerHTML = `<tr>${headers.map(h => `<th>${h}</th>`).join("")}</tr>`;
+      table.querySelector("tbody").innerHTML = rows.map((row, i) => {
+        return `<tr>
+          ${row.slice(0, 7).map((v, j) => `<td><input value="${v || ""}" onchange="updateCell(${i}, ${j}, this.value)" /></td>`).join("")}
+          <td>
+            <button onclick="toggleStatus(${i})">${row[7] === "Completed" ? "✅" : "⏳"}</button>
+            <br/><span style="font-size:12px;color:#666;">${row[7] || ""}</span>
+          </td>
+        </tr>`;
+      }).join("");
+    }
+
+    function updateCell(row, col, val) {
+      fetch(`${endpoint}?action=update&row=${row}&col=${col}&val=${encodeURIComponent(val)}`);
+    }
+
+    function toggleStatus(row) {
+      fetch(`${endpoint}?action=toggle&row=${row}`).then(fetchData);
+    }
+  </script>
+</body>
+</html>
