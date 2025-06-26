@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>O&T 控制台</title>
+  <title>O&T 控制台 - 報表列印版</title>
   <style>
     body { font-family: "Segoe UI", sans-serif; margin: 20px; background: #f4f4f4; }
     h2 { color: #333; }
@@ -23,6 +23,7 @@
     .status-btn.completed { background: #4caf50; }
     .readonly { background: #f7f7f7; color: #888; text-align: center; }
     #lastUpdated { font-size: 13px; color: #555; margin-left: 10px; }
+
     @media (max-width: 768px) {
       table, thead, tbody, th, td, tr { display: block; }
       tr { margin-bottom: 12px; background: #fff; }
@@ -34,9 +35,19 @@
         white-space: nowrap;
       }
     }
+
     @media print {
-      button, #lastUpdated { display: none !important; }
-      body { background: white; }
+      body { background: white; margin: 0; }
+      h2, button, #lastUpdated { display: none !important; }
+      td input, td select, td button {
+        all: unset;
+        display: block;
+        width: 100%;
+        padding: 4px;
+        font-size: 13px;
+      }
+      table { font-size: 12px; border: 1px solid #999; }
+      tr { page-break-inside: avoid; }
     }
   </style>
 </head>
@@ -45,7 +56,7 @@
   <div style="margin-bottom:12px; display: flex; flex-wrap: wrap; align-items: center;">
     <button onclick="fetchData()">🔁 更新資料</button>
     <button onclick="exportCSV()">⬇️ 匯出 CSV</button>
-    <button onclick="window.print()">🖨️ 列印</button>
+    <button onclick="window.print()">🖨️ 列印報表</button>
     <span id="lastUpdated">🔄 載入中...</span>
   </div>
 
