@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>O&T 控制台 - 報表列印版</title>
+  <title>O&T 控制台 - 列印版</title>
   <style>
     body { font-family: "Segoe UI", sans-serif; margin: 20px; background: #f4f4f4; }
     h2 { color: #333; }
@@ -68,86 +68,4 @@
   </div>
 
 <script>
-const endpoint = "https://script.google.com/macros/s/AKfycbztI91dGhYOwz6m_k7RBZsdT3mAfNBOikGM1tRsGy67rnaQaDwAeCCe1aW5OT9ssA_SSw/exec";
-const headers = ["Registration Time", "Name&Post", "Ward", "Bed number(s)", "Urgent", "Task(s)", "Remarks", "Status", "Lasted update time"];
-const table = document.getElementById("dataTable");
-let rowData = [];
-
-fetchData();
-setInterval(fetchData, 15000);
-
-function fetchData() {
-  fetch(endpoint)
-    .then(res => res.json())
-    .then(data => {
-      rowData = data.rows;
-      renderTable(rowData);
-      const now = new Date();
-      document.getElementById("lastUpdated").textContent = "🔄 最後更新：" + now.toLocaleString("zh-HK", { hour12: false });
-    });
-}
-
-function renderTable(rows) {
-  const headerRow = headers.map(h => `<th>${h}</th>`).join("");
-  const filterRow = headers.map((_, i) => {
-    const options = [...new Set(rowData.map(row => row[i]).filter(Boolean))]
-      .map(val => `<option value="${val}"></option>`).join("");
-    return `<th><input list="filter${i}" data-index="${i}" oninput="applyFilters()" placeholder="🔍"><datalist id="filter${i}">${options}</datalist></th>`;
-  }).join("");
-  table.querySelector("thead").innerHTML = `<tr>${headerRow}</tr><tr>${filterRow}</tr>`;
-
-  const body = rows.map((row, i) => {
-    const cells = row.map((val, j) => {
-      if (j === 0 || j === 8) {
-        return `<td data-label="${headers[j]}"><input value="${val || ""}" class="readonly" readonly></td>`;
-      } else if (j === 4) {
-        return `<td data-label="Urgent">
-          <select onchange="updateCell(${i},${j},this.value)">
-            ${["Yes", "No"].map(opt => `<option ${val === opt ? "selected" : ""}>${opt}</option>`).join("")}
-          </select></td>`;
-      } else if (j === 7) {
-        const state = (val || "").toLowerCase() === "completed";
-        return `<td data-label="Status">
-          <button class="status-btn ${state ? "completed" : "pending"}" onclick="toggleStatus(${i})">
-            ${state ? "✅ Completed" : "⏳ Pending"}
-          </button></td>`;
-      } else {
-        return `<td data-label="${headers[j]}"><input value="${val || ""}" onchange="updateCell(${i},${j},this.value)"></td>`;
-      }
-    }).join("");
-    return `<tr>${cells}</tr>`;
-  }).join("");
-  table.querySelector("tbody").innerHTML = body;
-}
-
-function applyFilters() {
-  const filters = Array.from(table.querySelectorAll("thead input")).map(input => input.value.toLowerCase());
-  const filtered = rowData.filter(row =>
-    filters.every((val, idx) => !val || (row[idx] || "").toLowerCase().includes(val))
-  );
-  renderTable(filtered);
-}
-
-function updateCell(row, col, val) {
-  fetch(`${endpoint}?action=update&row=${row}&col=${col}&val=${encodeURIComponent(val)}`);
-}
-
-function toggleStatus(row) {
-  fetch(`${endpoint}?action=toggle&row=${row}`).then(fetchData);
-}
-
-function exportCSV() {
-  const csvRows = [headers.join(",")];
-  for (const row of rowData) {
-    const line = row.map(cell => `"${(cell || "").toString().replace(/"/g, '""')}"`).join(",");
-    csvRows.push(line);
-  }
-  const blob = new Blob([csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = "ot_console.csv";
-  link.click();
-}
-</script>
-</body>
-</html>
+const endpoint = "https://script
