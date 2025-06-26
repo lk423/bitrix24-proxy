@@ -10,12 +10,19 @@
     table { width: 100%; border-collapse: collapse; background: #fff; font-size: 14px; }
     th, td { border: 1px solid #ccc; padding: 6px; text-align: center; }
     th { background: #eaeaea; }
-    input[type="text"] { width: 100%; padding: 4px; box-sizing: border-box; }
+    input[type="text"], select {
+      width: 100%; padding: 4px; box-sizing: border-box;
+    }
     button {
       padding: 5px 10px; background: #4caf50; color: white;
       border: none; border-radius: 4px; font-size: 13px; cursor: pointer;
     }
     button:hover { background: #388e3c; }
+    .status-btn.pending { background: #ff9800; }
+    .status-btn.completed { background: #4caf50; }
+    .readonly {
+      background: #f7f7f7; color: #888;
+    }
     @media (max-width: 768px) {
       table, thead, tbody, th, td, tr { display: block; }
       tr { margin-bottom: 12px; background: #fff; }
@@ -34,6 +41,7 @@
 
   <div style="margin-bottom:12px;">
     <button onclick="fetchData()">🔁 立即更新資料</button>
+    <button onclick="addNewRow()">🆕 新增任務</button>
     <span id="lastUpdated" style="margin-left:10px;color:#555;font-size:13px;">
       🔄 資料載入中...
     </span>
@@ -48,7 +56,7 @@
 
 <script>
 const endpoint = "https://script.google.com/macros/s/AKfycbztI91dGhYOwz6m_k7RBZsdT3mAfNBOikGM1tRsGy67rnaQaDwAeCCe1aW5OT9ssA_SSw/exec";
-const headers = ["時間戳記", "Name&Post", "Ward", "Bed number(s)", "Urgent", "Task(s)", "Remarks", "Status", "Lasted update time"];
+const headers = ["Registration Time", "Name&Post", "Ward", "Bed number(s)", "Urgent", "Task(s)", "Remarks", "Status", "Lasted update time"];
 const table = document.getElementById("dataTable");
 let rowData = [];
 
@@ -69,25 +77,34 @@ function fetchData() {
 
 function renderTable(rows) {
   const headerRow = headers.map(h => `<th>${h}</th>`).join("");
-  const filterRow = headers.map((_, i) =>
-    `<th><input type="text" placeholder="🔍" oninput="applyFilters()" data-index="${i}"></th>`
-  ).join("");
+  const filterRow = headers.map((_, i) => {
+    const uniqueVals = [...new Set(rowData.map(row => row[i]).filter(Boolean))];
+    const datalistId = `filter-list-${i}`;
+    const options = uniqueVals.map(v => `<option value="${v}"></option>`).join("");
+    return `<th>
+      <input list="${datalistId}" oninput="applyFilters()" data-index="${i}" placeholder="🔍" />
+      <datalist id="${datalistId}">${options}</datalist>
+    </th>`;
+  }).join("");
   table.querySelector("thead").innerHTML = `<tr>${headerRow}</tr><tr>${filterRow}</tr>`;
 
   const body = rows.map((row, i) => {
-    const editableCells = row.map((val, j) => {
-      // 對 A 和 I 欄做 readonly（即 index 0 與 8）
+    const cells = row.map((val, j) => {
       if (j === 0 || j === 8) {
-        return `<td data-label="${headers[j]}"><input value="${val || ""}" readonly style="background:#f7f7f7;color:#888;"></td>`;
+        return `<td data-label="${headers[j]}"><input value="${val || ""}" class="readonly" readonly></td>`;
+      } else if (j === 7) {
+        const btnClass = val === "Completed" ? "completed" : "pending";
+        const label = val === "Completed" ? "✅ Completed" : "⏳ Pending";
+        return `<td data-label="Status">
+          <button class="status-btn ${btnClass}" onclick="toggleStatus(${i})">${label}</button>
+        </td>`;
+      } else {
+        const isUrgent = (j === 4 && val && val.toLowerCase() !== "no");
+        const urgentStyle = isUrgent ? 'style="color:red;font-weight:bold;"' : "";
+        return `<td data-label="${headers[j]}"><input value="${val || ""}" onchange="updateCell(${i},${j},this.value)" ${urgentStyle}></td>`;
       }
-
-      const isUrgent = (j === 4 && val && val.toLowerCase() !== "no");
-      const urgentStyle = isUrgent ? 'style="color:red;font-weight:bold;"' : "";
-
-      return `<td data-label="${headers[j]}"><input value="${val || ""}" onchange="updateCell(${i},${j},this.value)" ${urgentStyle}></td>`;
     }).join("");
-
-    return `<tr>${editableCells}</tr>`;
+    return `<tr>${cells}</tr>`;
   }).join("");
 
   table.querySelector("tbody").innerHTML = body;
@@ -103,6 +120,14 @@ function applyFilters() {
 
 function updateCell(row, col, val) {
   fetch(`${endpoint}?action=update&row=${row}&col=${col}&val=${encodeURIComponent(val)}`);
+}
+
+function toggleStatus(row) {
+  fetch(`${endpoint}?action=toggle&row=${row}`).then(fetchData);
+}
+
+function addNewRow() {
+  fetch(`${endpoint}?action=add`).then(() => fetchData());
 }
 </script>
 </body>
