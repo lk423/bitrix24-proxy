@@ -16,6 +16,7 @@
     button {
       padding: 5px 10px; background: #4caf50; color: white;
       border: none; border-radius: 4px; font-size: 13px; cursor: pointer;
+      margin-right: 8px;
     }
     button:hover { background: #388e3c; }
     .status-btn.pending { background: #ff9800; }
@@ -33,14 +34,19 @@
         white-space: nowrap;
       }
     }
+    @media print {
+      button, #lastUpdated { display: none !important; }
+      body { background: white; }
+    }
   </style>
 </head>
 <body>
   <h2>📋 O&T 控制台</h2>
-
-  <div style="margin-bottom:12px; display: flex; align-items: center;">
-    <button onclick="fetchData()">🔁 立即更新資料</button>
-    <span id="lastUpdated">🔄 資料載入中...</span>
+  <div style="margin-bottom:12px; display: flex; flex-wrap: wrap; align-items: center;">
+    <button onclick="fetchData()">🔁 更新資料</button>
+    <button onclick="exportCSV()">⬇️ 匯出 CSV</button>
+    <button onclick="window.print()">🖨️ 列印</button>
+    <span id="lastUpdated">🔄 載入中...</span>
   </div>
 
   <div style="overflow-x:auto;">
@@ -66,19 +72,16 @@ function fetchData() {
       rowData = data.rows;
       renderTable(rowData);
       const now = new Date();
-      const t = now.toLocaleString("zh-HK", { hour12: false });
-      document.getElementById("lastUpdated").textContent = "🔄 最後更新時間：" + t;
+      document.getElementById("lastUpdated").textContent = "🔄 最後更新：" + now.toLocaleString("zh-HK", { hour12: false });
     });
 }
 
 function renderTable(rows) {
   const headerRow = headers.map(h => `<th>${h}</th>`).join("");
   const filterRow = headers.map((_, i) => {
-    const uniqueVals = [...new Set(rowData.map(row => row[i]).filter(Boolean))];
-    const datalistId = `filter-${i}`;
-    const options = uniqueVals.map(v => `<option value="${v}"></option>`).join("");
-    return `<th><input list="${datalistId}" oninput="applyFilters()" data-index="${i}" placeholder="🔍">
-      <datalist id="${datalistId}">${options}</datalist></th>`;
+    const options = [...new Set(rowData.map(row => row[i]).filter(Boolean))]
+      .map(val => `<option value="${val}"></option>`).join("");
+    return `<th><input list="filter${i}" data-index="${i}" oninput="applyFilters()" placeholder="🔍"><datalist id="filter${i}">${options}</datalist></th>`;
   }).join("");
   table.querySelector("thead").innerHTML = `<tr>${headerRow}</tr><tr>${filterRow}</tr>`;
 
@@ -87,15 +90,16 @@ function renderTable(rows) {
       if (j === 0 || j === 8) {
         return `<td data-label="${headers[j]}"><input value="${val || ""}" class="readonly" readonly></td>`;
       } else if (j === 4) {
-        const options = ["Yes", "No"].map(opt =>
-          `<option value="${opt}" ${val === opt ? "selected" : ""}>${opt}</option>`).join("");
-        return `<td data-label="Urgent"><select onchange="updateCell(${i},${j},this.value)">${options}</select></td>`;
+        return `<td data-label="Urgent">
+          <select onchange="updateCell(${i},${j},this.value)">
+            ${["Yes", "No"].map(opt => `<option ${val === opt ? "selected" : ""}>${opt}</option>`).join("")}
+          </select></td>`;
       } else if (j === 7) {
-        const btnClass = val === "Completed" ? "completed" : "pending";
-        const label = val === "Completed" ? "✅ Completed" : "⏳ Pending";
+        const state = (val || "").toLowerCase() === "completed";
         return `<td data-label="Status">
-          <button class="status-btn ${btnClass}" onclick="toggleStatus(${i})">${label}</button>
-        </td>`;
+          <button class="status-btn ${state ? "completed" : "pending"}" onclick="toggleStatus(${i})">
+            ${state ? "✅ Completed" : "⏳ Pending"}
+          </button></td>`;
       } else {
         return `<td data-label="${headers[j]}"><input value="${val || ""}" onchange="updateCell(${i},${j},this.value)"></td>`;
       }
@@ -106,9 +110,9 @@ function renderTable(rows) {
 }
 
 function applyFilters() {
-  const filters = Array.from(table.querySelectorAll("thead input")).map(i => i.value.toLowerCase());
+  const filters = Array.from(table.querySelectorAll("thead input")).map(input => input.value.toLowerCase());
   const filtered = rowData.filter(row =>
-    filters.every((v, i) => !v || (row[i] || "").toLowerCase().includes(v))
+    filters.every((val, idx) => !val || (row[idx] || "").toLowerCase().includes(val))
   );
   renderTable(filtered);
 }
@@ -119,6 +123,19 @@ function updateCell(row, col, val) {
 
 function toggleStatus(row) {
   fetch(`${endpoint}?action=toggle&row=${row}`).then(fetchData);
+}
+
+function exportCSV() {
+  const csvRows = [headers.join(",")];
+  for (const row of rowData) {
+    const line = row.map(cell => `"${(cell || "").toString().replace(/"/g, '""')}"`).join(",");
+    csvRows.push(line);
+  }
+  const blob = new Blob([csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "ot_console.csv";
+  link.click();
 }
 </script>
 </body>
