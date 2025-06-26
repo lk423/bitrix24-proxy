@@ -47,4 +47,61 @@
   </div>
 
 <script>
-const endpoint = "https://script.google.com/macros/s/AKfycbztI91dGhYOwz
+const endpoint = "https://script.google.com/macros/s/AKfycbztI91dGhYOwz6m_k7RBZsdT3mAfNBOikGM1tRsGy67rnaQaDwAeCCe1aW5OT9ssA_SSw/exec";
+const headers = ["Name", "Post", "Ward", "Bed Number(s)", "Urgent", "Task(s)", "Remarks", "Status"];
+const table = document.getElementById("dataTable");
+let rowData = [];
+
+fetchData();
+setInterval(fetchData, 15000);
+
+function fetchData() {
+  fetch(endpoint)
+    .then(res => res.json())
+    .then(data => {
+      rowData = data.rows;
+      renderTable(rowData);
+      const now = new Date();
+      const t = now.toLocaleTimeString("en-GB", { hour12: false });
+      document.getElementById("lastUpdated").textContent = "🔄 最後更新時間：" + t;
+    });
+}
+
+function renderTable(rows) {
+  const headerRow = headers.map(h => `<th>${h}</th>`).join("");
+  const filterRow = headers.map((_, i) =>
+    `<th><input type="text" placeholder="🔍" oninput="applyFilters()" data-index="${i}"></th>`
+  ).join("");
+  table.querySelector("thead").innerHTML = `<tr>${headerRow}</tr><tr>${filterRow}</tr>`;
+
+  const body = rows.map((row, i) => {
+    const editableCells = row.slice(0, 7).map((val, j) => {
+      const isUrgent = (j === 4 && val && val.toLowerCase() !== "no");
+      const urgentStyle = isUrgent ? 'style="color:red;font-weight:bold;"' : "";
+      return `<td data-label="${headers[j]}"><input value="${val || ""}" onchange="updateCell(${i},${j},this.value)" ${urgentStyle}></td>`;
+    }).join("");
+    const status = row[7] || "";
+    const btn = `<button onclick="toggleStatus(${i})">${status === "Completed" ? "✅" : "⏳"}</button><br><span style="font-size:12px;color:#666;">${status}</span>`;
+    return `<tr>${editableCells}<td data-label="Status">${btn}</td></tr>`;
+  }).join("");
+  table.querySelector("tbody").innerHTML = body;
+}
+
+function applyFilters() {
+  const filters = Array.from(table.querySelectorAll("thead input")).map(i => i.value.toLowerCase());
+  const filtered = rowData.filter(row =>
+    filters.every((v, i) => !v || (row[i] || "").toLowerCase().includes(v))
+  );
+  renderTable(filtered);
+}
+
+function updateCell(row, col, val) {
+  fetch(`${endpoint}?action=update&row=${row}&col=${col}&val=${encodeURIComponent(val)}`);
+}
+
+function toggleStatus(row) {
+  fetch(`${endpoint}?action=toggle&row=${row}`).then(fetchData);
+}
+</script>
+</body>
+</html>
