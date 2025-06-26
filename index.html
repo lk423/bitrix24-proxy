@@ -11,7 +11,7 @@
     th, td { border: 1px solid #ccc; padding: 6px; text-align: center; }
     th { background: #eaeaea; }
     input[type="text"], select {
-      width: 100%; padding: 4px; box-sizing: border-box;
+      width: 100%; padding: 4px; box-sizing: border-box; text-align: center;
     }
     button {
       padding: 5px 10px; background: #4caf50; color: white;
@@ -20,9 +20,7 @@
     button:hover { background: #388e3c; }
     .status-btn.pending { background: #ff9800; }
     .status-btn.completed { background: #4caf50; }
-    .readonly {
-      background: #f7f7f7; color: #888;
-    }
+    .readonly { background: #f7f7f7; color: #888; text-align: center; }
     @media (max-width: 768px) {
       table, thead, tbody, th, td, tr { display: block; }
       tr { margin-bottom: 12px; background: #fff; }
@@ -47,12 +45,10 @@
     </span>
   </div>
 
-  <div style="overflow-x:auto;">
-    <table id="dataTable">
-      <thead></thead>
-      <tbody></tbody>
-    </table>
-  </div>
+  <table id="dataTable">
+    <thead></thead>
+    <tbody></tbody>
+  </table>
 
 <script>
 const endpoint = "https://script.google.com/macros/s/AKfycbztI91dGhYOwz6m_k7RBZsdT3mAfNBOikGM1tRsGy67rnaQaDwAeCCe1aW5OT9ssA_SSw/exec";
@@ -70,7 +66,7 @@ function fetchData() {
       rowData = data.rows;
       renderTable(rowData);
       const now = new Date();
-      const t = now.toLocaleTimeString("en-GB", { hour12: false });
+      const t = now.toLocaleString("zh-HK", { hour12: false });
       document.getElementById("lastUpdated").textContent = "🔄 最後更新時間：" + t;
     });
 }
@@ -79,12 +75,10 @@ function renderTable(rows) {
   const headerRow = headers.map(h => `<th>${h}</th>`).join("");
   const filterRow = headers.map((_, i) => {
     const uniqueVals = [...new Set(rowData.map(row => row[i]).filter(Boolean))];
-    const datalistId = `filter-list-${i}`;
+    const datalistId = `filter-${i}`;
     const options = uniqueVals.map(v => `<option value="${v}"></option>`).join("");
-    return `<th>
-      <input list="${datalistId}" oninput="applyFilters()" data-index="${i}" placeholder="🔍" />
-      <datalist id="${datalistId}">${options}</datalist>
-    </th>`;
+    return `<th><input list="${datalistId}" oninput="applyFilters()" data-index="${i}" placeholder="🔍">
+      <datalist id="${datalistId}">${options}</datalist></th>`;
   }).join("");
   table.querySelector("thead").innerHTML = `<tr>${headerRow}</tr><tr>${filterRow}</tr>`;
 
@@ -92,6 +86,14 @@ function renderTable(rows) {
     const cells = row.map((val, j) => {
       if (j === 0 || j === 8) {
         return `<td data-label="${headers[j]}"><input value="${val || ""}" class="readonly" readonly></td>`;
+      } else if (j === 2) {
+        const options = ["3E", "5AT", "9A", "10A", "10B"].map(opt =>
+          `<option value="${opt}" ${val === opt ? "selected" : ""}>${opt}</option>`).join("");
+        return `<td data-label="Ward"><select onchange="updateCell(${i},${j},this.value)">${options}</select></td>`;
+      } else if (j === 4) {
+        const options = ["Yes", "No"].map(opt =>
+          `<option value="${opt}" ${val === opt ? "selected" : ""}>${opt}</option>`).join("");
+        return `<td data-label="Urgent"><select onchange="updateCell(${i},${j},this.value)">${options}</select></td>`;
       } else if (j === 7) {
         const btnClass = val === "Completed" ? "completed" : "pending";
         const label = val === "Completed" ? "✅ Completed" : "⏳ Pending";
@@ -99,14 +101,11 @@ function renderTable(rows) {
           <button class="status-btn ${btnClass}" onclick="toggleStatus(${i})">${label}</button>
         </td>`;
       } else {
-        const isUrgent = (j === 4 && val && val.toLowerCase() !== "no");
-        const urgentStyle = isUrgent ? 'style="color:red;font-weight:bold;"' : "";
-        return `<td data-label="${headers[j]}"><input value="${val || ""}" onchange="updateCell(${i},${j},this.value)" ${urgentStyle}></td>`;
+        return `<td data-label="${headers[j]}"><input value="${val || ""}" onchange="updateCell(${i},${j},this.value)"></td>`;
       }
     }).join("");
     return `<tr>${cells}</tr>`;
   }).join("");
-
   table.querySelector("tbody").innerHTML = body;
 }
 
@@ -127,7 +126,7 @@ function toggleStatus(row) {
 }
 
 function addNewRow() {
-  fetch(`${endpoint}?action=add`).then(() => fetchData());
+  fetch(`${endpoint}?action=add`).then(fetchData);
 }
 </script>
 </body>
