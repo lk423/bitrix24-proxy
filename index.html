@@ -5,34 +5,33 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>O&T 控制台</title>
   <style>
-    body { font-family: "Segoe UI", sans-serif; margin: 20px; background: #f9f9f9; }
+    body { font-family: "Segoe UI", sans-serif; margin: 20px; background: #f4f4f4; }
     h2 { color: #333; }
-    table { width: 100%; border-collapse: collapse; font-size: 14px; background: #fff; }
-    th, td { padding: 8px; border: 1px solid #ccc; text-align: center; }
-    th { background-color: #f2f2f2; }
+    table { width: 100%; border-collapse: collapse; background: #fff; font-size: 14px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+    th { background: #eaeaea; }
     input { width: 100%; padding: 5px; box-sizing: border-box; }
     button {
       padding: 5px 10px;
-      background: #4CAF50;
+      background: #4caf50;
       color: white;
       border: none;
       border-radius: 4px;
       font-size: 13px;
       cursor: pointer;
     }
-    button:hover { background-color: #388e3c; }
+    button:hover { background: #388e3c; }
     @media (max-width: 768px) {
+      body { margin: 10px; font-size: 13px; }
       table, thead, tbody, th, td, tr { display: block; }
-      th { text-align: left; background: #eee; }
-      td { border: none; border-bottom: 1px solid #ccc; position: relative; padding-left: 50%; }
+      tr { margin-bottom: 12px; background: #fff; }
+      td { text-align: left; padding-left: 50%; position: relative; }
       td::before {
+        content: attr(data-label);
         position: absolute;
-        top: 8px;
-        left: 8px;
-        width: 45%;
-        white-space: nowrap;
+        left: 10px;
         font-weight: bold;
-        color: #666;
+        color: #555;
       }
     }
   </style>
@@ -48,8 +47,8 @@
 
   <script>
     const endpoint = "https://script.google.com/macros/s/AKfycbztI91dGhYOwz6m_k7RBZsdT3mAfNBOikGM1tRsGy67rnaQaDwAeCCe1aW5OT9ssA_SSw/exec";
-    const table = document.getElementById("dataTable");
     const headers = ["Name", "Post", "Ward", "Bed Number(s)", "Urgent", "Task(s)", "Remarks", "Status"];
+    const table = document.getElementById("dataTable");
 
     fetchData();
     setInterval(fetchData, 15000);
@@ -57,21 +56,18 @@
     function fetchData() {
       fetch(endpoint)
         .then(res => res.json())
-        .then(data => {
-          renderTable(data.rows);
-        });
+        .then(data => renderTable(data.rows));
     }
 
     function renderTable(rows) {
-      table.querySelector("thead").innerHTML = `<tr>${headers.map(h => `<th>${h}</th>`).join("")}</tr>`;
+      table.querySelector("thead").innerHTML = "<tr>" + headers.map(h => `<th>${h}</th>`).join("") + "</tr>";
       table.querySelector("tbody").innerHTML = rows.map((row, i) => {
-        return `<tr>
-          ${row.slice(0, 7).map((v, j) => `<td><input value="${v || ""}" onchange="updateCell(${i}, ${j}, this.value)" /></td>`).join("")}
-          <td>
-            <button onclick="toggleStatus(${i})">${row[7] === "Completed" ? "✅" : "⏳"}</button>
-            <br/><span style="font-size:12px;color:#666;">${row[7] || ""}</span>
-          </td>
-        </tr>`;
+        const inputs = row.slice(0, 7).map((val, j) => {
+          return `<td data-label="${headers[j]}"><input value="${val || ""}" onchange="updateCell(${i},${j},this.value)" /></td>`;
+        }).join("");
+        const status = row[7] || "";
+        const statusBtn = `<button onclick="toggleStatus(${i})">${status === "Completed" ? "✅" : "⏳"}</button><br><span style="font-size:12px;color:#666;">${status}</span>`;
+        return `<tr>${inputs}<td data-label="Status">${statusBtn}</td></tr>`;
       }).join("");
     }
 
