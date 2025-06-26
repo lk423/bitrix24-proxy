@@ -8,36 +8,37 @@
     body { font-family: "Segoe UI", sans-serif; margin: 20px; background: #f4f4f4; }
     h2 { color: #333; }
     table { width: 100%; border-collapse: collapse; background: #fff; font-size: 14px; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+    th, td { border: 1px solid #ccc; padding: 6px; text-align: center; }
     th { background: #eaeaea; }
-    input { width: 100%; padding: 5px; box-sizing: border-box; }
+    input[type="text"] { width: 100%; padding: 4px; box-sizing: border-box; }
     button {
-      padding: 5px 10px;
-      background: #4caf50;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      font-size: 13px;
-      cursor: pointer;
+      padding: 5px 10px; background: #4caf50; color: white;
+      border: none; border-radius: 4px; font-size: 13px; cursor: pointer;
     }
     button:hover { background: #388e3c; }
     @media (max-width: 768px) {
-      body { margin: 10px; font-size: 13px; }
       table, thead, tbody, th, td, tr { display: block; }
       tr { margin-bottom: 12px; background: #fff; }
       td { text-align: left; padding-left: 50%; position: relative; }
       td::before {
         content: attr(data-label);
-        position: absolute;
-        left: 10px;
-        font-weight: bold;
-        color: #555;
+        position: absolute; left: 10px; top: 8px;
+        font-weight: bold; color: #555; width: 45%;
+        white-space: nowrap;
       }
     }
   </style>
 </head>
 <body>
   <h2>📋 O&T 控制台</h2>
+
+  <div style="margin-bottom:12px;">
+    <button onclick="fetchData()">🔁 立即更新資料</button>
+    <span id="lastUpdated" style="margin-left:10px;color:#555;font-size:13px;">
+      🔄 資料載入中...
+    </span>
+  </div>
+
   <div style="overflow-x:auto;">
     <table id="dataTable">
       <thead></thead>
@@ -45,39 +46,5 @@
     </table>
   </div>
 
-  <script>
-    const endpoint = "https://script.google.com/macros/s/AKfycbztI91dGhYOwz6m_k7RBZsdT3mAfNBOikGM1tRsGy67rnaQaDwAeCCe1aW5OT9ssA_SSw/exec";
-    const headers = ["Name", "Post", "Ward", "Bed Number(s)", "Urgent", "Task(s)", "Remarks", "Status"];
-    const table = document.getElementById("dataTable");
-
-    fetchData();
-    setInterval(fetchData, 15000);
-
-    function fetchData() {
-      fetch(endpoint)
-        .then(res => res.json())
-        .then(data => renderTable(data.rows));
-    }
-
-    function renderTable(rows) {
-      table.querySelector("thead").innerHTML = "<tr>" + headers.map(h => `<th>${h}</th>`).join("") + "</tr>";
-      table.querySelector("tbody").innerHTML = rows.map((row, i) => {
-        const inputs = row.slice(0, 7).map((val, j) => {
-          return `<td data-label="${headers[j]}"><input value="${val || ""}" onchange="updateCell(${i},${j},this.value)" /></td>`;
-        }).join("");
-        const status = row[7] || "";
-        const statusBtn = `<button onclick="toggleStatus(${i})">${status === "Completed" ? "✅" : "⏳"}</button><br><span style="font-size:12px;color:#666;">${status}</span>`;
-        return `<tr>${inputs}<td data-label="Status">${statusBtn}</td></tr>`;
-      }).join("");
-    }
-
-    function updateCell(row, col, val) {
-      fetch(`${endpoint}?action=update&row=${row}&col=${col}&val=${encodeURIComponent(val)}`);
-    }
-
-    function toggleStatus(row) {
-      fetch(`${endpoint}?action=toggle&row=${row}`).then(fetchData);
-    }
-  </script>
-</body>
-</html>
+<script>
+const endpoint = "https://script.google.com/macros/s/AKfycbztI91dGhYOwz
