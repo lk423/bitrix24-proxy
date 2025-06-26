@@ -1,41 +1,155 @@
-const SHEET_ID = "1ZWboG5p4FRklcABlLhX7SomEb8gDhYzrPsuvfJQ_OxQ";
-const SHEET_NAME = "Sheet1"; // 根據實際工作表名稱修改
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>O&T 控制台 - GitHub Pages</title>
+  <style>
+    body { font-family: "Segoe UI", sans-serif; margin: 20px; background: #f4f4f4; }
+    h2 { color: #333; }
+    table { width: 100%; border-collapse: collapse; background: #fff; font-size: 14px; }
+    th, td { border: 1px solid #ccc; padding: 6px; text-align: center; }
+    th { background: #eaeaea; }
+    input[type="text"], select {
+      width: 100%; padding: 4px; box-sizing: border-box; text-align: center;
+    }
+    button {
+      padding: 5px 10px; background: #4caf50; color: white;
+      border: none; border-radius: 4px; font-size: 13px; cursor: pointer;
+      margin-right: 8px;
+    }
+    button:hover { background: #388e3c; }
+    .status-btn.pending { background: #ff9800; }
+    .status-btn.completed { background: #4caf50; }
+    .readonly { background: #f7f7f7; color: #888; text-align: center; }
+    #lastUpdated { font-size: 13px; color: #555; margin-left: 10px; }
 
-function doGet(e) {
-  const action = e?.parameter?.action;
-  if (action === "update") return doUpdate(e);
-  if (action === "toggle") return doToggle(e);
-  return ContentService.createTextOutput(JSON.stringify(getData()))
-    .setMimeType(ContentService.MimeType.JSON);
+    @media (max-width: 768px) {
+      table, thead, tbody, th, td, tr { display: block; }
+      tr { margin-bottom: 12px; background: #fff; }
+      td { text-align: left; padding-left: 50%; position: relative; }
+      td::before {
+        content: attr(data-label);
+        position: absolute; left: 10px; top: 8px;
+        font-weight: bold; color: #555; width: 45%;
+        white-space: nowrap;
+      }
+    }
+
+    @media print {
+      body { background: white; margin: 0; }
+      h2, button, #lastUpdated { display: none !important; }
+      td input, td select, td button {
+        all: unset;
+        display: block;
+        width: 100%;
+        padding: 4px;
+        font-size: 13px;
+      }
+      table { font-size: 12px; border: 1px solid #999; }
+      tr { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <h2>📋 O&T 控制台</h2>
+  <div style="margin-bottom:12px; display: flex; flex-wrap: wrap; align-items: center;">
+    <button onclick="fetchData()">🔁 更新資料</button>
+    <button onclick="exportCSV()">⬇️ 匯出 CSV</button>
+    <button onclick="window.print()">🖨️ 列印報表</button>
+    <span id="lastUpdated">🔄 載入中...</span>
+  </div>
+
+  <div style="overflow-x:auto;">
+    <table id="dataTable">
+      <thead></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+<script>
+const endpoint = "https://script.google.com/macros/s/AKfycbztI91dGhYOwz6m_k7RBZsdT3mAfNBOikGM1tRsGy67rnaQaDwAeCCe1aW5OT9ssA_SSw/exec";
+const headers = ["Registration Time", "Name&Post", "Ward", "Bed number(s)", "Urgent", "Task(s)", "Remarks", "Status"];
+const table = document.getElementById("dataTable");
+let rowData = [];
+
+fetchData();
+setInterval(fetchData, 15000);
+
+function fetchData() {
+  fetch(endpoint)
+    .then(res => res.json())
+    .then(data => {
+      rowData = data.rows.map(row => row.slice(0, 8)); // 隱藏第 9 欄（更新時間）
+      renderTable(rowData);
+      const now = new Date();
+      document.getElementById("lastUpdated").textContent =
+        "🔄 最後更新：" + now.toLocaleString("zh-HK", { hour12: false });
+    });
+}
+function renderTable(rows) {
+  const headerRow = headers.map(h => `<th>${h}</th>`).join("");
+  const filterRow = headers.map((_, i) => {
+    const options = [...new Set(rowData.map(row => row[i]).filter(Boolean))]
+      .map(val => `<option value="${val}"></option>`).join("");
+    return `<th><input list="filter${i}" data-index="${i}" oninput="applyFilters()" placeholder="🔍">
+            <datalist id="filter${i}">${options}</datalist></th>`;
+  }).join("");
+  table.querySelector("thead").innerHTML = `<tr>${headerRow}</tr><tr>${filterRow}</tr>`;
+
+  const body = rows.map((row, i) => {
+    const cells = row.map((val, j) => {
+      if (j === 0) {
+        return `<td data-label="${headers[j]}"><input value="${val || ""}" class="readonly" readonly></td>`;
+      } else if (j === 4) {
+        return `<td data-label="Urgent">
+          <select onchange="updateCell(${i},${j},this.value)">
+            ${["Yes", "No"].map(opt => `<option ${val === opt ? "selected" : ""}>${opt}</option>`).join("")}
+          </select></td>`;
+      } else if (j === 7) {
+        const state = (val || "").toLowerCase() === "completed";
+        return `<td data-label="Status">
+          <button class="status-btn ${state ? "completed" : "pending"}" onclick="toggleStatus(${i})">
+            ${state ? "✅ Completed" : "⏳ Pending"}
+          </button></td>`;
+      } else {
+        return `<td data-label="${headers[j]}"><input value="${val || ""}" onchange="updateCell(${i},${j},this.value)"></td>`;
+      }
+    }).join("");
+    return `<tr>${cells}</tr>`;
+  }).join("");
+
+  table.querySelector("tbody").innerHTML = body;
 }
 
-function getData() {
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
-  const data = sheet.getDataRange().getValues();
-  return { rows: data.slice(2) }; // 跳過前 2 列（標題與篩選列）
+function applyFilters() {
+  const filters = Array.from(table.querySelectorAll("thead input")).map(input => input.value.toLowerCase());
+  const filtered = rowData.filter(row =>
+    filters.every((val, idx) => !val || (row[idx] || "").toLowerCase().includes(val))
+  );
+  renderTable(filtered);
 }
 
-function doUpdate(e) {
-  const row = parseInt(e.parameter.row, 10) + 3;
-  const col = parseInt(e.parameter.col, 10) + 1;
-  const val = e.parameter.val;
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
-  sheet.getRange(row, col).setValue(val);
-  sheet.getRange(row, 9).setValue(nowHK());
-  return ContentService.createTextOutput("OK");
+function updateCell(row, col, val) {
+  fetch(`${endpoint}?action=update&row=${row}&col=${col}&val=${encodeURIComponent(val)}`);
 }
 
-function doToggle(e) {
-  const row = parseInt(e.parameter.row, 10) + 3;
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
-  const cell = sheet.getRange(row, 8);
-  const current = (cell.getValue() || "").toString().toLowerCase();
-  const next = current === "completed" ? "Pending" : "Completed";
-  cell.setValue(next);
-  sheet.getRange(row, 9).setValue(nowHK());
-  return ContentService.createTextOutput("OK");
+function toggleStatus(row) {
+  fetch(`${endpoint}?action=toggle&row=${row}`).then(fetchData);
 }
 
-function nowHK() {
-  return Utilities.formatDate(new Date(), "Asia/Hong_Kong", "yyyy/MM/dd, HH:mm:ss");
+function exportCSV() {
+  const csvRows = [headers.join(",")];
+  for (const row of rowData) {
+    const line = row.map(cell => `"${(cell || "").toString().replace(/"/g, '""')}"`).join(",");
+    csvRows.push(line);
+  }
+  const blob = new Blob([csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "ot_console.csv";
+  link.click();
 }
+</script>
+</body>
+</html>
