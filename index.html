@@ -88,4 +88,11 @@
             return `<td data-label="${headers[j]}"><input value="${val || ""}" onchange="updateCell(${i},${j},this.value)"></td>`;
           }
         }).join("");
-        return `<tr>${cells}</
+        return `<tr>${cells}</tr>`;
+      }).join("");
+
+      table.querySelector("tbody").innerHTML = body;
+    }
+
+    function applyFilters() {
+      const filters = Array.from(table.querySelectorAll("thead input")).map(input => input
