@@ -17,17 +17,31 @@
     .readonly { background: #f7f7f7; color: #888; }
     #lastUpdated { font-size: 13px; color: #555; margin-left: 10px; }
     @media print {
-      h2, button, #lastUpdated { display: none !important; }
-      td input, td select, td button { all: unset; display: block; width: 100%; font-size: 13px; }
+      h2, #lastUpdated { display: none !important; }
+      button::before {
+        content: attr(data-label);
+        color: #000;
+      }
+      button {
+        all: unset;
+        display: inline;
+        font-size: 13px;
+      }
+      td input, td select, td button {
+        all: unset;
+        display: block;
+        width: 100%;
+        font-size: 13px;
+      }
     }
   </style>
 </head>
 <body>
   <h2>📋 O&T 控制台</h2>
   <div>
-    <button onclick="fetchData()">🔁 更新資料</button>
-    <button onclick="exportCSV()">⬇️ 匯出 CSV</button>
-    <button onclick="window.print()">🖨️ 列印報表</button>
+    <button onclick="fetchData()" data-label="🔁 更新資料">🔁 更新資料</button>
+    <button onclick="exportCSV()" data-label="⬇️ 匯出 CSV">⬇️ 匯出 CSV</button>
+    <button onclick="window.print()" data-label="🖨️ 列印報表">🖨️ 列印報表</button>
     <span id="lastUpdated">🔄 載入中...</span>
   </div>
   <div style="overflow-x:auto;">
@@ -68,7 +82,7 @@
             ${["Yes","No"].map(opt => `<option ${val===opt?"selected":""}>${opt}</option>`).join("")}</select></td>`;
           if (j === 7) {
             const isDone = (val||"").toLowerCase() === "completed";
-            return `<td><button class="status-btn ${isDone?"completed":"pending"}" onclick="toggleStatus(${i})">${isDone?"✅ Completed":"⏳ Pending"}</button></td>`;
+            return `<td><button class="status-btn ${isDone?"completed":"pending"}" data-label="${isDone?"✅ Completed":"⏳ Pending"}" onclick="toggleStatus(${i})">${isDone?"✅ Completed":"⏳ Pending"}</button></td>`;
           }
           return `<td><input value="${val||''}" onchange="updateCell(${i},${j},this.value)"></td>`;
         }).join("")}</tr>`).join("");
