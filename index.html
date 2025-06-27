@@ -3,38 +3,28 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>O&T 控制台 - GitHub Pages</title>
+  <title>O&T 控制台</title>
   <style>
     body { font-family: "Segoe UI", sans-serif; margin: 20px; background: #f4f4f4; }
-    h2 { color: #333; }
     table { width: 100%; border-collapse: collapse; background: #fff; font-size: 14px; }
     th, td { border: 1px solid #ccc; padding: 6px; text-align: center; }
     th { background: #eaeaea; }
-    input[type="text"], select { width: 100%; padding: 4px; box-sizing: border-box; text-align: center; }
-    button { padding: 5px 10px; background: #4caf50; color: white; border: none; border-radius: 4px; font-size: 13px; cursor: pointer; margin-right: 8px; }
+    input, select { width: 100%; padding: 4px; box-sizing: border-box; text-align: center; }
+    button { padding: 5px 10px; background: #4caf50; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 8px; font-size: 13px; }
     button:hover { background: #388e3c; }
     .status-btn.pending { background: #ff9800; }
     .status-btn.completed { background: #4caf50; }
-    .readonly { background: #f7f7f7; color: #888; text-align: center; }
+    .readonly { background: #f7f7f7; color: #888; }
     #lastUpdated { font-size: 13px; color: #555; margin-left: 10px; }
-    @media (max-width: 768px) {
-      table, thead, tbody, th, td, tr { display: block; }
-      tr { margin-bottom: 12px; background: #fff; }
-      td { text-align: left; padding-left: 50%; position: relative; }
-      td::before { content: attr(data-label); position: absolute; left: 10px; top: 8px; font-weight: bold; color: #555; width: 45%; white-space: nowrap; }
-    }
     @media print {
-      body { background: white; margin: 0; }
       h2, button, #lastUpdated { display: none !important; }
-      td input, td select, td button { all: unset; display: block; width: 100%; padding: 4px; font-size: 13px; }
-      table { font-size: 12px; border: 1px solid #999; }
-      tr { page-break-inside: avoid; }
+      td input, td select, td button { all: unset; display: block; width: 100%; font-size: 13px; }
     }
   </style>
 </head>
 <body>
   <h2>📋 O&T 控制台</h2>
-  <div style="margin-bottom:12px; display: flex; flex-wrap: wrap; align-items: center;">
+  <div>
     <button onclick="fetchData()">🔁 更新資料</button>
     <button onclick="exportCSV()">⬇️ 匯出 CSV</button>
     <button onclick="window.print()">🖨️ 列印報表</button>
@@ -56,43 +46,58 @@
     setInterval(fetchData, 15000);
 
     function fetchData() {
-      fetch(endpoint)
-        .then(res => res.json())
-        .then(data => {
-          rowData = data.rows.map(row => row.slice(0, 8));
-          renderTable(rowData);
-          const now = new Date();
-          document.getElementById("lastUpdated").textContent = "🔄 最後更新：" + now.toLocaleString("zh-HK", { hour12: false });
-        });
+      fetch(endpoint).then(res => res.json()).then(data => {
+        rowData = data.rows.map(row => row.slice(0, 8));
+        renderTable(rowData);
+        document.getElementById("lastUpdated").textContent = "🔄 最後更新：" + new Date().toLocaleString("zh-HK", { hour12: false });
+      });
     }
 
     function renderTable(rows) {
-      const headerRow = headers.map(h => `<th>${h}</th>`).join("");
-      const filterRow = headers.map((_, i) => {
-        const options = [...new Set(rowData.map(row => row[i]).filter(Boolean))]
-          .map(val => `<option value="${val}"></option>`).join("");
-        return `<th><input list="filter${i}" data-index="${i}" oninput="applyFilters()" placeholder="🔍"> <datalist id="filter${i}">${options}</datalist></th>`;
-      }).join("");
-      table.querySelector("thead").innerHTML = `<tr>${headerRow}</tr><tr>${filterRow}</tr>`;
-
-      const body = rows.map((row, i) => {
-        const cells = row.map((val, j) => {
-          if (j === 0) {
-            return `<td data-label="${headers[j]}"><input value="${val || ""}" class="readonly" readonly></td>`;
-          } else if (j === 4) {
-            return `<td data-label="Urgent"><select onchange="updateCell(${i},${j},this.value)"> ${["Yes", "No"].map(opt => `<option ${val === opt ? "selected" : ""}>${opt}</option>`).join("")} </select></td>`;
-          } else if (j === 7) {
-            const state = (val || "").toLowerCase() === "completed";
-            return `<td data-label="Status"><button class="status-btn ${state ? "completed" : "pending"}" onclick="toggleStatus(${i})">${state ? "✅ Completed" : "⏳ Pending"}</button></td>`;
-          } else {
-            return `<td data-label="${headers[j]}"><input value="${val || ""}" onchange="updateCell(${i},${j},this.value)"></td>`;
+      table.querySelector("thead").innerHTML = `
+        <tr>${headers.map(h => `<th>${h}</th>`).join("")}</tr>
+        <tr>${headers.map((_, i) => `
+          <th><input list="filter${i}" data-index="${i}" oninput="applyFilters()" placeholder="🔍">
+          <datalist id="filter${i}">${[...new Set(rowData.map(r => r[i]).filter(Boolean))].map(v => `<option>${v}</option>`).join("")}</datalist></th>
+        `).join("")}</tr>`;
+      
+      table.querySelector("tbody").innerHTML = rows.map((row, i) => `
+        <tr>${row.map((val, j) => {
+          if (j === 0) return `<td><input value="${val||''}" class="readonly" readonly></td>`;
+          if (j === 4) return `<td><select onchange="updateCell(${i},${j},this.value)">
+            ${["Yes","No"].map(opt => `<option ${val===opt?"selected":""}>${opt}</option>`).join("")}</select></td>`;
+          if (j === 7) {
+            const isDone = (val||"").toLowerCase() === "completed";
+            return `<td><button class="status-btn ${isDone?"completed":"pending"}" onclick="toggleStatus(${i})">${isDone?"✅ Completed":"⏳ Pending"}</button></td>`;
           }
-        }).join("");
-        return `<tr>${cells}</tr>`;
-      }).join("");
-
-      table.querySelector("tbody").innerHTML = body;
+          return `<td><input value="${val||''}" onchange="updateCell(${i},${j},this.value)"></td>`;
+        }).join("")}</tr>`).join("");
     }
 
     function applyFilters() {
-      const filters = Array.from(table.querySelectorAll("thead input")).map(input => input
+      const inputs = table.querySelectorAll("thead input");
+      const filters = [...inputs].map(i => i.value.toLowerCase());
+      const filtered = rowData.filter(r => filters.every((f, i) => !f || (r[i]||"").toString().toLowerCase().includes(f)));
+      renderTable(filtered);
+    }
+
+    function updateCell(row, col, val) {
+      fetch(`${endpoint}?action=update&row=${row}&col=${col}&val=${encodeURIComponent(val)}`);
+    }
+
+    function toggleStatus(row) {
+      fetch(`${endpoint}?action=toggle&row=${row}`);
+      setTimeout(fetchData, 500);
+    }
+
+    function exportCSV() {
+      let csv = headers.join(",") + "\n" + rowData.map(row => row.map(v => `"${v||""}"`).join(",")).join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "tasks.csv";
+      link.click();
+    }
+  </script>
+</body>
+</html>
